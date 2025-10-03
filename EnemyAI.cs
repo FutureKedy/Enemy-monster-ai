@@ -157,6 +157,14 @@ public class EnemyAI : Health
     [Header("Death Effects")]
     public DeathEffect[] deathEffects;
 
+    [Header("Trail Effect Settings")]
+public GameObject[] trailPrefabs;
+public float trailSpawnInterval = 0.2f;
+public float trailLifetime = 1f;
+
+private float trailSpawnTimer = 0f;
+
+
     private Transform currentTarget;
     private List<Transform> nearbySummons = new List<Transform>();
     private const string SUMMON_TAG = "FriendlySummon";
@@ -355,6 +363,24 @@ float effectiveSpeed = speed * effectiveTickRatio;
     {
         HandlePatrolBehavior();
     }
+    HandleTrailSpawn();
+    private void HandleTrailSpawn()
+{
+    if (trailPrefabs == null || trailPrefabs.Length == 0) return;
+
+    trailSpawnTimer += Time.deltaTime;
+    if (trailSpawnTimer >= trailSpawnInterval)
+    {
+        trailSpawnTimer = 0f;
+        GameObject prefab = trailPrefabs[Random.Range(0, trailPrefabs.Length)];
+        if (prefab != null)
+        {
+            GameObject trail = Instantiate(prefab, transform.position, Quaternion.identity);
+            Destroy(trail, trailLifetime);
+        }
+    }
+}
+
 }
 private void ChaseTarget()
 {
@@ -671,4 +697,5 @@ private void ChaseTarget()
     }
 
 }
+
 
