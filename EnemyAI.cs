@@ -216,15 +216,17 @@ private float trailSpawnTimer = 0f;
         }
     }
     private void HandleTick()
-    {
-        _tickAccumulator += ticksPerSecond / (float)Ticker.TicksPerSecond;
+{
+    _tickAccumulator += ticksPerSecond / (float)Ticker.TicksPerSecond;
 
-        while (_tickAccumulator >= 1f)
-        {
-            _tickAccumulator -= 1f;
-            TickLogic();
-        }
+    while (_tickAccumulator >= 1f)
+    {
+        _tickAccumulator -= 1f;
+        TickLogic();
+        HandleTrailSpawn();
     }
+}
+
     private void TickLogic()
     {
         if (playerInAttackReach && classType == EnemyClass.Melee)
@@ -336,42 +338,46 @@ float effectiveSpeed = speed * effectiveTickRatio;
     {
         HandleMinionBehavior();
     }
-    if (currentTarget != null)
-    {
-        float distanceToTarget = Vector2.Distance(transform.position, currentTarget.position);
-        if (distanceToTarget <= aggroRange)
+        if (currentTarget != null)
         {
-            if (!isAggroed) isAggroed = true;
-
-            switch (classType)
+            float distanceToTarget = Vector2.Distance(transform.position, currentTarget.position);
+            if (distanceToTarget <= aggroRange)
             {
-                case EnemyClass.Melee:
-                    ChaseTarget();
-                    break;
-                case EnemyClass.Ranged:
-                    if (!playerInAttackReach) ChaseTarget();
-                    break;
+                if (!isAggroed) isAggroed = true;
+
+                switch (classType)
+                {
+                    case EnemyClass.Melee:
+                        ChaseTarget();
+                        break;
+                    case EnemyClass.Ranged:
+                        if (!playerInAttackReach) ChaseTarget();
+                        break;
+                }
             }
         }
-    }
-    else if (isAggroed)
-    {
-        isAggroed = false;
-        HandlePatrolBehavior();
-    }
-    else if (shouldPatrol)
-    {
-        HandlePatrolBehavior();
-    }
-    HandleTrailSpawn();
-    private void HandleTrailSpawn()
+        else if (isAggroed)
+        {
+            isAggroed = false;
+            HandlePatrolBehavior();
+        }
+        else if (shouldPatrol)
+{
+    HandlePatrolBehavior();
+}
+}
+
+private int trailSpawnTicks = 0;
+
+
+private void HandleTrailSpawn()
 {
     if (trailPrefabs == null || trailPrefabs.Length == 0) return;
 
-    trailSpawnTimer += Time.deltaTime;
-    if (trailSpawnTimer >= trailSpawnInterval)
+    trailSpawnTicks++;
+    if (trailSpawnTicks >= Mathf.RoundToInt(trailSpawnInterval * ticksPerSecond))
     {
-        trailSpawnTimer = 0f;
+        trailSpawnTicks = 0;
         GameObject prefab = trailPrefabs[Random.Range(0, trailPrefabs.Length)];
         if (prefab != null)
         {
@@ -381,7 +387,8 @@ float effectiveSpeed = speed * effectiveTickRatio;
     }
 }
 
-}
+
+
 private void ChaseTarget()
 {
     if (Ticker.TicksPerSecond == 0) return; // Stop movement if time stopped
@@ -697,5 +704,4 @@ private void ChaseTarget()
     }
 
 }
-
 
