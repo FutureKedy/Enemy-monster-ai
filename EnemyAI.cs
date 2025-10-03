@@ -7,6 +7,10 @@ public enum Faction { Passive, Undead, Demon, Monster, Humanoid, Animals, Mutate
 public enum EnemyClass { Melee, Ranged, Tank, Mage, Knight }
 public enum BossType { None, Commander, Stronghold }
 
+// this is the ai for the enemies in my game any and all contributions are wellcome 
+// please dont use delta time and use the tick i used you can see it in the code
+// you can use this code for your own projects
+
 [System.Serializable]
 public class DeathEffect
 {
@@ -665,4 +669,5 @@ private void ChaseTarget()
             ChooseRandomPatrolDestination();
         }
     }
+
 }
