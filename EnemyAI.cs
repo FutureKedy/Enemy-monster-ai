@@ -66,7 +66,7 @@ public class EnemyAI : Health
     public Faction faction = Faction.Monster;
 
     [Header("Attack Settings")]
-    public GameEnums.DamageType damageType = GameEnums.DamageType.Physical; // Set whatever default you want
+    public GameEnums.DamageType damageType = GameEnums.DamageType.Physical; 
     public GameEnums.ElementType elementType = GameEnums.ElementType.None;
 
     [Header("Resistance Settings")]
@@ -75,7 +75,7 @@ public class EnemyAI : Health
     [Range(0, 1)] public float holyResistance = 0f;
     [Range(0, 1)] public float demonicResistance = 0f;
 
-    [Header("Weakness Settings")]  // NEW SECTION
+    [Header("Weakness Settings")]  
     [Range(0, 1)] public float physicalWeakness = 0f;
     [Range(0, 1)] public float magicalWeakness = 0f;
     [Range(0, 1)] public float holyWeakness = 0f;
@@ -91,7 +91,7 @@ public class EnemyAI : Health
     [Range(0, 1)] public float spaceResistance = 0f;
     [Range(0, 1)] public float timeResistance = 0f;
 
-    [Header("Elemental Weaknesses")]  // NEW SECTION
+    [Header("Elemental Weaknesses")]  
     [Range(0, 1)] public float fireWeakness = 0f;
     [Range(0, 1)] public float waterWeakness = 0f;
     [Range(0, 1)] public float earthWeakness = 0f;
@@ -152,7 +152,7 @@ public class EnemyAI : Health
 
     [Header("References")]
     [SerializeField] private SpriteRenderer spriteRenderer;
-    [SerializeField] private Animator animator; // ✅ Add animator reference
+    [SerializeField] private Animator animator; 
 
     [Header("Death Effects")]
     public DeathEffect[] deathEffects;
@@ -671,3 +671,4 @@ private void ChaseTarget()
     }
 
 }
+
