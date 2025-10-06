@@ -1,29 +1,31 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class EnemyAI_Remastered : MonoBehaviour
 {
+    [Header("Movement Settings")]
     public float speed = 2f;
     public int ticksPerSecond = 20;
+    public Vector2 moveDirection = Vector2.up;
 
-    private Vector2 moveDirection = Vector2.up;
-    private Vector2 targetPosition;
+    private Rigidbody2D rb;
     private float tickAccumulator;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        rb.gravityScale = 0f; // Ensure it stays 2D top-down
+        rb.freezeRotation = true; // No unwanted spinning
+    }
 
     private void OnEnable()
     {
         Ticker.OnTickAction += HandleTick;
-        targetPosition = transform.position;
     }
 
     private void OnDisable()
     {
         Ticker.OnTickAction -= HandleTick;
-    }
-
-    private void Update()
-    {
-        // Smooth movement between ticks
-        transform.position = Vector2.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
     }
 
     private void HandleTick()
@@ -39,9 +41,11 @@ public class EnemyAI_Remastered : MonoBehaviour
 
     private void TickLogic()
     {
-        // Move forward based on tick rate
+        // Movement handled via physics (respects colliders)
         float step = speed * (1f / ticksPerSecond);
-        targetPosition = (Vector2)transform.position + moveDirection.normalized * step;
+        Vector2 nextPos = rb.position + moveDirection.normalized * step;
+
+        rb.MovePosition(nextPos);
     }
 }
 
