@@ -2,27 +2,21 @@ using UnityEngine;
 
 public class EnemyAI_Remastered : MonoBehaviour
 {
-    [Header("Movement / Steering")]
-    public float speed = 2f;                         // units per second
-    public float rayDistance = 1.5f;                 // how far forward to check
-    public float sideRayDistance = 1.2f;             // how far side rays check
-    public float feelerAngle = 30f;                  // angle offset for side rays
-    public float steerStrength = 1f;                 // how strong the steering turn is
-
-    [Header("Tick System")]
+    public float speed = 2f;
+    public float rayDistance = 1.5f;
+    public float turnAngle = 30f;
     public int ticksPerSecond = 20;
-    private float _tickAccumulator;
-    private Vector2 _targetPosition;
 
-    [Header("Reference to target (e.g. player)")]
-    public Transform target;
+    private Vector2 moveDirection = Vector2.up;
+    private Vector2 targetPosition;
+    private float tickAccumulator;
 
-    private Vector2 moveDirection = Vector2.up;     // current direction
     private void OnEnable()
     {
         Ticker.OnTickAction += HandleTick;
-        _targetPosition = transform.position;
+        targetPosition = transform.position;
     }
+
     private void OnDisable()
     {
         Ticker.OnTickAction -= HandleTick;
@@ -30,90 +24,39 @@ public class EnemyAI_Remastered : MonoBehaviour
 
     private void Update()
     {
-        // Interpolate toward the last tick’s target position
-        transform.position = Vector2.MoveTowards(transform.position, _targetPosition, speed * Time.deltaTime);
-        // Optionally rotate or flip sprite based on moveDirection
+        // Smooth movement between ticks
+        transform.position = Vector2.MoveTowards(transform.position, targetPosition, speed * Time.deltaTime);
     }
 
     private void HandleTick()
     {
-        _tickAccumulator += ticksPerSecond / (float)Ticker.TicksPerSecond;
-        while (_tickAccumulator >= 1f)
+        tickAccumulator += ticksPerSecond / (float)Ticker.TicksPerSecond;
+
+        while (tickAccumulator >= 1f)
         {
-            _tickAccumulator -= 1f;
+            tickAccumulator -= 1f;
             TickLogic();
         }
     }
 
     private void TickLogic()
     {
-        Vector2 pos2D = transform.position;
-        Vector2 dir = moveDirection.normalized;
+        // Cast ray directly forward to detect any collider (no layer filtering)
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, moveDirection, rayDistance);
 
-        // Optional: if you have a target, you may want to steer toward it
-        if (target != null)
+        Debug.DrawRay(transform.position, moveDirection * rayDistance, Color.red);
+
+        if (hit.collider != null)
         {
-            Vector2 toTarget = ((Vector2)target.position - pos2D).normalized;
-            // Blend toward target direction a little (you can weight this)
-            dir = Vector2.Lerp(dir, toTarget, 0.2f).normalized;
+            // Turn a bit randomly to avoid obstacle
+            float angle = Random.value > 0.5f ? turnAngle : -turnAngle;
+            moveDirection = Quaternion.Euler(0, 0, angle) * moveDirection;
+            return;
         }
 
-        // Cast forward feeler
-        RaycastHit2D hitForward = Physics2D.Raycast(pos2D, dir, rayDistance);
-        Debug.DrawRay(pos2D, dir * rayDistance, Color.red);
-
-        // Cast side feelers
-        float angleRad = feelerAngle * Mathf.Deg2Rad;
-        Vector2 dirLeft = new Vector2(
-            dir.x * Mathf.Cos(angleRad) - dir.y * Mathf.Sin(angleRad),
-            dir.x * Mathf.Sin(angleRad) + dir.y * Mathf.Cos(angleRad)
-        );
-        Vector2 dirRight = new Vector2(
-            dir.x * Mathf.Cos(-angleRad) - dir.y * Mathf.Sin(-angleRad),
-            dir.x * Mathf.Sin(-angleRad) + dir.y * Mathf.Cos(-angleRad)
-        );
-
-        RaycastHit2D hitLeft = Physics2D.Raycast(pos2D, dirLeft, sideRayDistance);
-        RaycastHit2D hitRight = Physics2D.Raycast(pos2D, dirRight, sideRayDistance);
-        Debug.DrawRay(pos2D, dirLeft * sideRayDistance, Color.yellow);
-        Debug.DrawRay(pos2D, dirRight * sideRayDistance, Color.yellow);
-
-        // Steering logic: if forward is blocked, steer away
-        if (hitForward.collider != null)
-        {
-            // If one side is clearer, steer toward that
-            if (hitLeft.collider == null && hitRight.collider != null)
-            {
-                dir = dirLeft;
-            }
-            else if (hitRight.collider == null && hitLeft.collider != null)
-            {
-                dir = dirRight;
-            }
-            else
-            {
-                // both sides blocked (or both clear) — pick random
-                dir = (Random.value < 0.5f) ? dirLeft : dirRight;
-            }
-        }
-        else
-        {
-            // If forward is clear, but one side is blocked, you may gently steer away
-            if (hitLeft.collider != null)
-            {
-                dir = dirRight;
-            }
-            else if (hitRight.collider != null)
-            {
-                dir = dirLeft;
-            }
-        }
-
-        // Set new direction
-        moveDirection = dir.normalized;
-
-        // Compute new target position for this tick
+        // Advance position for the next tick
         float step = speed * (1f / ticksPerSecond);
-        _targetPosition = pos2D + moveDirection * step;
+        targetPosition = (Vector2)transform.position + moveDirection.normalized * step;
     }
 }
+
