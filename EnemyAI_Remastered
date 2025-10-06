@@ -3,35 +3,53 @@ using UnityEngine;
 public class EnemyAI_Remastered : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float moveSpeed = 3f;
+    public float speed = 2f;
     public float rayDistance = 1f;
     public LayerMask obstacleMask;
+    public Vector2 moveDirection = Vector2.up; // Default forward
 
-    [Header("Direction Settings")]
-    public Vector2 moveDirection = Vector2.up; // Default forward direction
+    [Header("Tick Settings")]
+    public int ticksPerSecond = 10;
+    private float _tickAccumulator;
 
-    void Update()
+    private void OnEnable()
     {
-        MoveWithRaycast();
+        Ticker.OnTickAction += HandleTick;
     }
 
-    void MoveWithRaycast()
+    private void OnDisable()
     {
-        // Raycast in move direction
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, moveDirection, rayDistance, obstacleMask);
+        Ticker.OnTickAction -= HandleTick;
+    }
 
-        // Debug line in Scene view
+    private void HandleTick()
+    {
+        _tickAccumulator += ticksPerSecond / (float)Ticker.TicksPerSecond;
+
+        while (_tickAccumulator >= 1f)
+        {
+            _tickAccumulator -= 1f;
+            TickLogic();
+        }
+    }
+
+    private void TickLogic()
+    {
+        // Raycast forward to detect obstacles
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, moveDirection, rayDistance, obstacleMask);
         Debug.DrawRay(transform.position, moveDirection * rayDistance, Color.red);
 
-        // If no obstacle detected, move forward
         if (hit.collider == null)
         {
-            transform.Translate(moveDirection * moveSpeed * Time.deltaTime, Space.World);
+            // Move forward one step per tick
+            float effectiveTickRatio = (float)Ticker.TicksPerSecond / ticksPerSecond;
+            Vector2 step = moveDirection.normalized * speed * (1f / ticksPerSecond) * effectiveTickRatio;
+            transform.position += (Vector3)step;
         }
         else
         {
-            // Stop moving when obstacle detected
-            Debug.Log("EnemyAI_Remastered: Obstacle detected -> " + hit.collider.name);
+            // Optional: simple avoidance — turn randomly when blocked
+            moveDirection = Quaternion.Euler(0, 0, Random.Range(90f, 270f)) * moveDirection;
         }
     }
 }
