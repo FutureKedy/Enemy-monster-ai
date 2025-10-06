@@ -117,4 +117,3 @@ public class EnemyAI_Remastered : MonoBehaviour
         _targetPosition = pos2D + moveDirection * step;
     }
 }
-
