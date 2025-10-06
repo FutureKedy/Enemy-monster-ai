@@ -1,0 +1,37 @@
+using UnityEngine;
+
+public class EnemyAI_Remastered : MonoBehaviour
+{
+    [Header("Movement Settings")]
+    public float moveSpeed = 3f;
+    public float rayDistance = 1f;
+    public LayerMask obstacleMask;
+
+    [Header("Direction Settings")]
+    public Vector2 moveDirection = Vector2.up; // Default forward direction
+
+    void Update()
+    {
+        MoveWithRaycast();
+    }
+
+    void MoveWithRaycast()
+    {
+        // Raycast in move direction
+        RaycastHit2D hit = Physics2D.Raycast(transform.position, moveDirection, rayDistance, obstacleMask);
+
+        // Debug line in Scene view
+        Debug.DrawRay(transform.position, moveDirection * rayDistance, Color.red);
+
+        // If no obstacle detected, move forward
+        if (hit.collider == null)
+        {
+            transform.Translate(moveDirection * moveSpeed * Time.deltaTime, Space.World);
+        }
+        else
+        {
+            // Stop moving when obstacle detected
+            Debug.Log("EnemyAI_Remastered: Obstacle detected -> " + hit.collider.name);
+        }
+    }
+}
