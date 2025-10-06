@@ -4,22 +4,41 @@ public class EnemyAI_Remastered : MonoBehaviour
 {
     [Header("Movement Settings")]
     public float speed = 2f;
+    [Tooltip("How far ahead the AI checks for obstacles.")]
     public float rayDistance = 1f;
-    public LayerMask obstacleMask;
-    public Vector2 moveDirection = Vector2.up; // Default forward
+
+    [Tooltip("How far to the sides the AI checks (left/right rays). Set 0 to disable side rays.")]
+    public float sideRayOffset = 0.5f;
+
+    [Tooltip("How much the AI turns when avoiding obstacles.")]
+    public float turnAngle = 15f;
+
+    [Tooltip("Movement direction (default = up).")]
+    public Vector2 moveDirection = Vector2.up;
 
     [Header("Tick Settings")]
-    public int ticksPerSecond = 10;
+    public int ticksPerSecond = 20;
     private float _tickAccumulator;
+    private Vector2 _targetPosition;
+
+    [Header("Layer Settings")]
+    public LayerMask obstacleMask;
 
     private void OnEnable()
     {
         Ticker.OnTickAction += HandleTick;
+        _targetPosition = transform.position;
     }
 
     private void OnDisable()
     {
         Ticker.OnTickAction -= HandleTick;
+    }
+
+    private void Update()
+    {
+        // Smooth visual interpolation between ticks
+        transform.position = Vector2.MoveTowards(transform.position, _targetPosition, speed * Time.deltaTime);
     }
 
     private void HandleTick()
@@ -35,21 +54,42 @@ public class EnemyAI_Remastered : MonoBehaviour
 
     private void TickLogic()
     {
-        // Raycast forward to detect obstacles
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, moveDirection, rayDistance, obstacleMask);
+        // Cast main ray
+        bool hitForward = Physics2D.Raycast(transform.position, moveDirection, rayDistance, obstacleMask);
+
+        // Optionally cast side rays for smoother avoidance
+        bool hitLeft = false;
+        bool hitRight = false;
+
+        if (sideRayOffset > 0f)
+        {
+            Vector2 leftOrigin = (Vector2)transform.position + Vector2.Perpendicular(moveDirection).normalized * -sideRayOffset;
+            Vector2 rightOrigin = (Vector2)transform.position + Vector2.Perpendicular(moveDirection).normalized * sideRayOffset;
+
+            hitLeft = Physics2D.Raycast(leftOrigin, moveDirection, rayDistance, obstacleMask);
+            hitRight = Physics2D.Raycast(rightOrigin, moveDirection, rayDistance, obstacleMask);
+
+            Debug.DrawRay(leftOrigin, moveDirection * rayDistance, Color.yellow);
+            Debug.DrawRay(rightOrigin, moveDirection * rayDistance, Color.yellow);
+        }
+
+        // Draw forward ray
         Debug.DrawRay(transform.position, moveDirection * rayDistance, Color.red);
 
-        if (hit.collider == null)
+        // Decide how to turn
+        if (hitForward || hitLeft || hitRight)
         {
-            // Move forward one step per tick
-            float effectiveTickRatio = (float)Ticker.TicksPerSecond / ticksPerSecond;
-            Vector2 step = moveDirection.normalized * speed * (1f / ticksPerSecond) * effectiveTickRatio;
-            transform.position += (Vector3)step;
+            float turnDir = 0f;
+            if (hitLeft && !hitRight) turnDir = turnAngle;       // turn right
+            else if (hitRight && !hitLeft) turnDir = -turnAngle; // turn left
+            else turnDir = Random.value > 0.5f ? turnAngle : -turnAngle;
+
+            moveDirection = Quaternion.Euler(0, 0, turnDir) * moveDirection;
+            return;
         }
-        else
-        {
-            // Optional: simple avoidance — turn randomly when blocked
-            moveDirection = Quaternion.Euler(0, 0, Random.Range(90f, 270f)) * moveDirection;
-        }
+
+        // Move forward (tick-based step)
+        float step = speed * (1f / ticksPerSecond);
+        _targetPosition = (Vector2)transform.position + moveDirection.normalized * step;
     }
 }
