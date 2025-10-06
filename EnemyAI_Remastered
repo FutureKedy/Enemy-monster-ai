@@ -2,34 +2,27 @@ using UnityEngine;
 
 public class EnemyAI_Remastered : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float speed = 2f;
-    [Tooltip("How far ahead the AI checks for obstacles.")]
-    public float rayDistance = 1f;
+    [Header("Movement / Steering")]
+    public float speed = 2f;                         // units per second
+    public float rayDistance = 1.5f;                 // how far forward to check
+    public float sideRayDistance = 1.2f;             // how far side rays check
+    public float feelerAngle = 30f;                  // angle offset for side rays
+    public float steerStrength = 1f;                 // how strong the steering turn is
 
-    [Tooltip("How far to the sides the AI checks (left/right rays). Set 0 to disable side rays.")]
-    public float sideRayOffset = 0.5f;
-
-    [Tooltip("How much the AI turns when avoiding obstacles.")]
-    public float turnAngle = 15f;
-
-    [Tooltip("Movement direction (default = up).")]
-    public Vector2 moveDirection = Vector2.up;
-
-    [Header("Tick Settings")]
+    [Header("Tick System")]
     public int ticksPerSecond = 20;
     private float _tickAccumulator;
     private Vector2 _targetPosition;
 
-    [Header("Layer Settings")]
-    public LayerMask obstacleMask;
+    [Header("Reference to target (e.g. player)")]
+    public Transform target;
 
+    private Vector2 moveDirection = Vector2.up;     // current direction
     private void OnEnable()
     {
         Ticker.OnTickAction += HandleTick;
         _targetPosition = transform.position;
     }
-
     private void OnDisable()
     {
         Ticker.OnTickAction -= HandleTick;
@@ -37,14 +30,14 @@ public class EnemyAI_Remastered : MonoBehaviour
 
     private void Update()
     {
-        // Smooth visual interpolation between ticks
+        // Interpolate toward the last tick’s target position
         transform.position = Vector2.MoveTowards(transform.position, _targetPosition, speed * Time.deltaTime);
+        // Optionally rotate or flip sprite based on moveDirection
     }
 
     private void HandleTick()
     {
         _tickAccumulator += ticksPerSecond / (float)Ticker.TicksPerSecond;
-
         while (_tickAccumulator >= 1f)
         {
             _tickAccumulator -= 1f;
@@ -54,42 +47,74 @@ public class EnemyAI_Remastered : MonoBehaviour
 
     private void TickLogic()
     {
-        // Cast main ray
-        bool hitForward = Physics2D.Raycast(transform.position, moveDirection, rayDistance, obstacleMask);
+        Vector2 pos2D = transform.position;
+        Vector2 dir = moveDirection.normalized;
 
-        // Optionally cast side rays for smoother avoidance
-        bool hitLeft = false;
-        bool hitRight = false;
-
-        if (sideRayOffset > 0f)
+        // Optional: if you have a target, you may want to steer toward it
+        if (target != null)
         {
-            Vector2 leftOrigin = (Vector2)transform.position + Vector2.Perpendicular(moveDirection).normalized * -sideRayOffset;
-            Vector2 rightOrigin = (Vector2)transform.position + Vector2.Perpendicular(moveDirection).normalized * sideRayOffset;
-
-            hitLeft = Physics2D.Raycast(leftOrigin, moveDirection, rayDistance, obstacleMask);
-            hitRight = Physics2D.Raycast(rightOrigin, moveDirection, rayDistance, obstacleMask);
-
-            Debug.DrawRay(leftOrigin, moveDirection * rayDistance, Color.yellow);
-            Debug.DrawRay(rightOrigin, moveDirection * rayDistance, Color.yellow);
+            Vector2 toTarget = ((Vector2)target.position - pos2D).normalized;
+            // Blend toward target direction a little (you can weight this)
+            dir = Vector2.Lerp(dir, toTarget, 0.2f).normalized;
         }
 
-        // Draw forward ray
-        Debug.DrawRay(transform.position, moveDirection * rayDistance, Color.red);
+        // Cast forward feeler
+        RaycastHit2D hitForward = Physics2D.Raycast(pos2D, dir, rayDistance);
+        Debug.DrawRay(pos2D, dir * rayDistance, Color.red);
 
-        // Decide how to turn
-        if (hitForward || hitLeft || hitRight)
+        // Cast side feelers
+        float angleRad = feelerAngle * Mathf.Deg2Rad;
+        Vector2 dirLeft = new Vector2(
+            dir.x * Mathf.Cos(angleRad) - dir.y * Mathf.Sin(angleRad),
+            dir.x * Mathf.Sin(angleRad) + dir.y * Mathf.Cos(angleRad)
+        );
+        Vector2 dirRight = new Vector2(
+            dir.x * Mathf.Cos(-angleRad) - dir.y * Mathf.Sin(-angleRad),
+            dir.x * Mathf.Sin(-angleRad) + dir.y * Mathf.Cos(-angleRad)
+        );
+
+        RaycastHit2D hitLeft = Physics2D.Raycast(pos2D, dirLeft, sideRayDistance);
+        RaycastHit2D hitRight = Physics2D.Raycast(pos2D, dirRight, sideRayDistance);
+        Debug.DrawRay(pos2D, dirLeft * sideRayDistance, Color.yellow);
+        Debug.DrawRay(pos2D, dirRight * sideRayDistance, Color.yellow);
+
+        // Steering logic: if forward is blocked, steer away
+        if (hitForward.collider != null)
         {
-            float turnDir = 0f;
-            if (hitLeft && !hitRight) turnDir = turnAngle;       // turn right
-            else if (hitRight && !hitLeft) turnDir = -turnAngle; // turn left
-            else turnDir = Random.value > 0.5f ? turnAngle : -turnAngle;
-
-            moveDirection = Quaternion.Euler(0, 0, turnDir) * moveDirection;
-            return;
+            // If one side is clearer, steer toward that
+            if (hitLeft.collider == null && hitRight.collider != null)
+            {
+                dir = dirLeft;
+            }
+            else if (hitRight.collider == null && hitLeft.collider != null)
+            {
+                dir = dirRight;
+            }
+            else
+            {
+                // both sides blocked (or both clear) — pick random
+                dir = (Random.value < 0.5f) ? dirLeft : dirRight;
+            }
+        }
+        else
+        {
+            // If forward is clear, but one side is blocked, you may gently steer away
+            if (hitLeft.collider != null)
+            {
+                dir = dirRight;
+            }
+            else if (hitRight.collider != null)
+            {
+                dir = dirLeft;
+            }
         }
 
-        // Move forward (tick-based step)
+        // Set new direction
+        moveDirection = dir.normalized;
+
+        // Compute new target position for this tick
         float step = speed * (1f / ticksPerSecond);
-        _targetPosition = (Vector2)transform.position + moveDirection.normalized * step;
+        _targetPosition = pos2D + moveDirection * step;
     }
 }
+
