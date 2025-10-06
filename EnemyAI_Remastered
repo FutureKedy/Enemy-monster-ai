@@ -3,8 +3,6 @@ using UnityEngine;
 public class EnemyAI_Remastered : MonoBehaviour
 {
     public float speed = 2f;
-    public float rayDistance = 1.5f;
-    public float turnAngle = 30f;
     public int ticksPerSecond = 20;
 
     private Vector2 moveDirection = Vector2.up;
@@ -41,20 +39,7 @@ public class EnemyAI_Remastered : MonoBehaviour
 
     private void TickLogic()
     {
-        // Cast ray directly forward to detect any collider (no layer filtering)
-        RaycastHit2D hit = Physics2D.Raycast(transform.position, moveDirection, rayDistance);
-
-        Debug.DrawRay(transform.position, moveDirection * rayDistance, Color.red);
-
-        if (hit.collider != null)
-        {
-            // Turn a bit randomly to avoid obstacle
-            float angle = Random.value > 0.5f ? turnAngle : -turnAngle;
-            moveDirection = Quaternion.Euler(0, 0, angle) * moveDirection;
-            return;
-        }
-
-        // Advance position for the next tick
+        // Move forward based on tick rate
         float step = speed * (1f / ticksPerSecond);
         targetPosition = (Vector2)transform.position + moveDirection.normalized * step;
     }
