@@ -1,51 +1,6 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
 public class EnemyAI_Remastered : MonoBehaviour
 {
-    [Header("Movement Settings")]
-    public float speed = 2f;
-    public int ticksPerSecond = 20;
-    public Vector2 moveDirection = Vector2.up;
-
-    private Rigidbody2D rb;
-    private float tickAccumulator;
-
-    private void Awake()
-    {
-        rb = GetComponent<Rigidbody2D>();
-        rb.gravityScale = 0f; // Ensure it stays 2D top-down
-        rb.freezeRotation = true; // No unwanted spinning
-    }
-
-    private void OnEnable()
-    {
-        Ticker.OnTickAction += HandleTick;
-    }
-
-    private void OnDisable()
-    {
-        Ticker.OnTickAction -= HandleTick;
-    }
-
-    private void HandleTick()
-    {
-        tickAccumulator += ticksPerSecond / (float)Ticker.TicksPerSecond;
-
-        while (tickAccumulator >= 1f)
-        {
-            tickAccumulator -= 1f;
-            TickLogic();
-        }
-    }
-
-    private void TickLogic()
-    {
-        // Movement handled via physics (respects colliders)
-        float step = speed * (1f / ticksPerSecond);
-        Vector2 nextPos = rb.position + moveDirection.normalized * step;
-
-        rb.MovePosition(nextPos);
-    }
 }
 
